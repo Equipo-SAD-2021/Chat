@@ -24,7 +24,6 @@
       var socket = io();
 
       /* Send messages */
-      socket.emit('new user', 'test');
       $('form').submit(function(){
         socket.emit('chat message', $('#m').val());
         $('#m').val('');
@@ -37,6 +36,9 @@
       });
       socket.on('new user', function(msg){
         $('#messages').append($("<li style='color:blue';>").text('User ' + msg + ' joined'));
+      });
+      socket.on('user disconnected', function(msg){
+        $('#messages').append($("<li style='color:red';>").text('User ' + msg + ' disconnected'));
       });
     </script>
   </body>

@@ -1,0 +1,34 @@
+<html>
+    <head>
+        <title>Socket.IO chat - login</title>
+    </head>
+    <body>
+        <form action="/index.html" method="POST">
+            <input type="text" name="nickname" id="username" placeholder="Will Smith" required>
+            <input type="submit" id="login" value="Connect" onsubmit="sendUser();">
+        </form>
+        <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      var socket = io();
+      
+      async function setUser(name) {
+        return new Promise ((cb) => { socket.emit('login', name, (result) => {
+            if (result === null) {
+                alert("Nickname invalid or already in use!");
+                cb(false);
+            } else {
+                alert(result);
+                cb(true);
+            }                
+        })});
+      }
+      /* Send messages */
+      async function sendUser() {
+            var ret = false;
+            let name = document.getElementById('username').value();            
+            return await setUser(name); 
+      }
+    </script>
+    </body>
+</html>
