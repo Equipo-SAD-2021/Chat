@@ -118,7 +118,7 @@ io.on('connection', function(socket) {
                         console.log('Got message: ', data);
                         io.sockets.sockets.find((s) => s.id == usernames[id][0]).emit('chatMessage', data);
                         style["color"] = "green";
-                        response = "You whisper to &lt;" + usernames[id][1] + "&gt;:<br/>" + sendText.replace("<", "&lt;").replace("&", "&amp;") + "<br/><br/>";
+                        response = "You whisper to &lt;" + usernames[id][1] + "&gt;:<br/>" + sendText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "<br/><br/>";
                     } else {
                         style["color"] = "red";
                         response = "The specified user was not found.<br/>Run <code>/users</code> to list the connected users.<br/><br/>";
