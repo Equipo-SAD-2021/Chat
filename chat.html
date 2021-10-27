@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Socket.IO chat</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font: 13px Helvetica, Arial; }
+            form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+            form p {color: white;}
+            form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+            form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+            #messages { list-style-type: none; margin: 0; padding: 0; margin-bottom:57px; overflow-y: auto;}
+            #messages li { padding: 5px 10px; }
+            #messages li:nth-child(odd) { background: #eee; }
+        </style>
+    </head>
+    <body>
+        <div><ul id="messages"></ul></div>
+        <div><form action="">
+            <p id="writing">&nbsp;</p>
+            <input id="m" autocomplete="off" /><button>Send</button>
+        </form></div>
+        <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+        <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+        <script>
+            function updateScroll() {
+                $('html, body').animate({scrollTop: $("#messages li").last().offset().top }, 10);
+            }
+
+            function appendMessage(data, isLocal) {
+                let align = "";
+                let text = "";
+                if (isLocal) {
+                    align = "right";
+                    text = data.content;
+                } else {
+                    align = "left";
+                    text = "<" + data.user + ">: " + data.content;
+                }
+                if (data.private)
+                    $('#messages').append($("<li style='text-align: " + align + "'>").text("User <" + data.user + "> whispers to you: " + data.content));
+                else
+                    $('#messages').append($("<li style='text-align: " + align + "'>").text(text));
+                updateScroll();
+            }
+
+            $("#m").focus();
+
+            var loginUUID = window.sessionStorage["loginUUID"];
+            if (loginUUID == null) {
+                window.location.href = "/";
+            } else {
+                var socket = io();
+                var writingState = false;
+
+                socket.emit("reqLogin", loginUUID, (nickname) => {
+                    if (nickname !== null) {
+                        /* Send messages */
+                        $('form').submit(function(){
+                            let msg = $('#m').val().trim();
+                            if (msg === "")
+                                return false;
+                            if (!msg.startsWith("/")) {
+                                socket.emit('chatMessage', msg);
+                                appendMessage({user: nickname, content: msg}, true);
+                            } else {
+                                var command = msg.split(" ");
+                                socket.emit("chatCommand", command, (response) => {
+                                    $('#messages').append($("<li style='" + response.style + "'>").html(response.content));
+                                    updateScroll();
+                                });
+                            }
+                            $('#m').val('');
+                            $('#m').trigger("input");
+                            return false;
+                        });
+
+                        $('#m').on("input", () =>{
+                            var text = $('#m').val();
+                            if (text === "" || text.startsWith("/")) {
+                                writingState = false;
+                                socket.emit("stopWriting");
+                            } else if (writingState == false) {
+                                writingState = true;
+                                socket.emit("startWriting");
+                            }
+                        });
+
+                        /* Receive messages */
+                        socket.on('chatMessage', function(msgData){
+                            appendMessage(msgData, false);
+                        });
+                        socket.on('newUser', function(user){
+                            $('#messages').append($("<li style='color:blue';>").text('User <' + user + '> joined the chat.'));
+                            updateScroll();
+                        });
+                        socket.on('userDisconnected', function(user){
+                            $('#messages').append($("<li style='color:blue';>").text('User <' + user + '> left the chat.'));
+                            updateScroll();
+                        });
+                        socket.on("changeWriting", function(users) {
+                            var msg = "";
+                            if (users == null) {
+                                msg = "\u00A0"; // &nbsp
+                            }
+                            else if (users.length === 0) {
+                                msg = "Many users are typing...";
+                            } else {
+                                let i = 0;
+                                users.forEach((usr) => {
+                                    msg = msg + "<" + usr + ">"
+                                    i++;
+                                    if (i == users.length - 1) {
+                                        msg = msg + " and ";
+                                    } else if (i != users.length) {
+                                        msg = msg + ", ";
+                                    }
+                                });
+                                if (users.length == 1) {
+                                    msg = msg + " is typing...";
+                                } else {
+                                    msg = msg + " are typing...";
+                                }
+                            }
+                            $("#writing").text(msg);
+                        })
+                    } else {
+                        window.location.href = "/";
+                    }
+                });
+            }
+        </script>
+    </body>
+</html>

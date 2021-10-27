@@ -4,23 +4,25 @@
     </head>
     <body>
         <form action="">
-            <input type="text" name="nickname" id="username" placeholder="Will Smith" required>
-            <input type="submit" id="login" value="Connect" onclick="sendUser();">
+            <input type="text" name="nickname" id="username" placeholder="WillSmith" required>
+            <input type="submit" id="login" value="Login" onclick="sendUser();">
         </form>
         <p id="error" style='color:red'></p>
         <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
         <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
         <script>
             var socket = io();
+
+            $("#username").focus();
         
             function setUser(name) {
                 socket.emit('login', name, (result) => {
-                    if (result === null) {
-                        document.getElementById('error').innerHTML = "Nickname invalid or already in use!";
-                        document.getElementById('login').disabled = false;
-                    } else {
-                        window.sessionStorage["loginUUID"] = result;
+                    if (result["code"] == null) {
+                        window.sessionStorage["loginUUID"] = result["uuid"];
                         window.location.href = "/chat";
+                    } else {
+                        document.getElementById('error').innerHTML = result["code"];
+                        document.getElementById('login').disabled = false;
                     }
                 });
             }
