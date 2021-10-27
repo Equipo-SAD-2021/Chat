@@ -1,68 +1,62 @@
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var crypto = require("crypto");
 
-var users = {}; //Stores all the usernames. The index is each socket's id
+function uuidv4() {
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.randomBytes(1)[0] & 15 >> c / 4).toString(16)
+    );
+}
+
+var pendingLogin = {};
+var users = {};
 
 app.get('/', function(req, res){
 	res.sendFile(__dirname + '/login.html');
 });
 
-app.post('/index.html', function(req, res){
-	res.sendFile(__dirname + '/login.html');
+app.get('/chat', function(req, res) {
+	res.sendFile(__dirname + '/index.html');
 });
 
-/* app.get('/', function(req, res){
-  var username = req.query.nickname;
-  res.sendFile(__dirname + '/index.html');
-}); */
+io.on('connection', function(socket) {
+    socket.on('login', (name, cb) => {
+        if (Object.values(users).includes(name)) {
+            cb(null);
+        } else {
+            var uuid = uuidv4();
+            pendingLogin[uuid] = name;
+            console.log("User logged in: (" + uuid + ") " + name);
+            cb(uuid);
+        }
+    });
 
-io.on('connection', function(socket){
-  socket.on('login', (name) => {
-    console.log(users);
-    if (Object.values(users).includes(name)) {
-      socket.emit("login", null);
-    } else {
-      users[socket.id] = name;
-      console.log("logged in " + name);
-      socket.emit('login', name);
-    }
-  });
+    socket.on('reqLogin', (loginUUID, cb) => {
+        if (loginUUID in pendingLogin) {
+            users[socket.id] = pendingLogin[loginUUID];
+            console.log("User joined the chat: (" + loginUUID + ") " + users[socket.id]);
+            io.emit("newUser", users[socket.id]);
+            cb(true);
+        } else {
+            cb(false);
+        }
+    });
 
-  /* 
-  1. User connects
-  2. Support for nicknames
-  */
-  /* socket.on('login', name => {
-    users[socket.id] = name;
-  }); */
-  socket.on('new user', nickname => {
-    console.log('User ' + nickname + ' joined');
-    io.emit('new user', nickname);
-  });
-  console.log('a user connected');
+    socket.on('disconnect', reason => {
+        if (socket.id in users) {
+            console.log('User logged out: ' + users[socket.id]);
+            io.emit('userDisconnected', users[socket.id]);
+            delete users[socket.id];
+        }
+    });
 
-  /* 
-  1. User disconnects
-  2. Support for nicknames
-  */
-  socket.on('disconnect', nickname => {
-    console.log('User ' + nickname + ' disconnected');
-    io.emit('user disconnected', nickname);
-  });
-  console.log('a user disconnected');
-
-  /* Chat msg */ 
-  socket.on('chat message', function(msg){
-    let data = {
-      //from: users[socket.id],
-      message: msg,
-    }
-    console.log('message: ' + data);
-    io.emit('chat message', data);
-  });
+    socket.on('chatMessage', function(msg){
+        console.log('Message sent: ' + msg);
+        io.emit('chatMessage', msg);
+    });
 });
 
 http.listen(3000, function(){
-  console.log('listening on *:3000');
+    console.log('listening on *:3000');
 });
