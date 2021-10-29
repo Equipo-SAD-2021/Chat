@@ -68,6 +68,13 @@ Archivo HTML con la estructura principal de la aplicación. Permite enviar las p
 Los _websockets_ definen un canal de comunicación _full-duplex_ que opera en la web a través de un único _socket_, objeto que está a la escucha de distintos eventos y nos permite desarrollar todas las acciones necesarias.
 
 
+## Referencias 📚
+
+A continuación se adjuntan enlaces que han servido de referencia en el desarrollo:
+
+* [Crear un UUIDv4](https://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid/2117523#2117523)
+* [Convertir objeto de estilo JSON en una string CSS](https://stackoverflow.com/questions/45205593/how-to-convert-a-json-style-object-to-a-css-string/61410824#61410824)
+
 ## Autores ✒️
 
 * **Antonio Martínez Leal** - [AntonioM15](https://github.com/AntonioM15)
