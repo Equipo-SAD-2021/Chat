@@ -3,20 +3,27 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var crypto = require("crypto");
 
+// Obtains a random uuid string.
 function uuidv4() {
     return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
       (c ^ crypto.randomBytes(1)[0] & 15 >> c / 4).toString(16)
     );
 }
 
+// Converts a JS object into a CSS style string.
 const styleToString = (style) => {
     return Object.keys(style).reduce((acc, key) => (
         acc + key.split(/(?=[A-Z])/).join('-').toLowerCase() + ':' + style[key] + ';'
     ), '');
 };
 
+// Object that contains the login UUIDs and the linked user name.
 var pendingLogin = {};
+
+// Object that contains the socket ID and the linked user name,
 var users = {};
+
+// Array that contains the currently writing users.
 var writingUsers = [];
 
 app.get('/', function(req, res){
@@ -33,7 +40,7 @@ io.on('connection', function(socket) {
         let res = {};
         res["code"] = null;
         res["uuid"] = null;
-        if (Object.values(users).includes(name)) {
+        if (Object.values(users).includes(name) || Object.values(pendingLogin).includes(name)) {
             res["code"] = "Nickname already in use.";
         } else {
             if (name.length == 0) {

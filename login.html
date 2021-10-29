@@ -1,3 +1,4 @@
+<!--HTML file containing the login page.-->
 <html>
     <head>
         <title>Socket.IO chat - login</title>
@@ -5,36 +6,46 @@
     <body>
         <form action="">
             <input type="text" name="nickname" id="username" placeholder="WillSmith" required>
-            <input type="submit" id="login" value="Login" onclick="sendUser();">
+            <input type="submit" id="login" value="Login" onclick="handleLoginButton();">
         </form>
         <p id="error" style='color:red'></p>
         <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
         <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
         <script>
             var socket = io();
-
+            
+            // Trigger focus to the nickname text bar, so that the user doesn't have to click it.
             $("#username").focus();
         
-            function setUser(name) {
+            // Emit the login event to the server.
+            function doLogin(name) {
+                // The event includes the login name.
                 socket.emit('login', name, (result) => {
+                    // If the result doesn't include an error code, the login succeeded.
                     if (result["code"] == null) {
+                        // Store the login uuid provided by the backend into the session storage, and go to the chat page.
+                        // This uuid will be used in the chat page to validate the access to the chat.
                         window.sessionStorage["loginUUID"] = result["uuid"];
                         window.location.href = "/chat";
+                    // Otherwise, show the error code to the user.
                     } else {
                         document.getElementById('error').innerHTML = result["code"];
                         document.getElementById('login').disabled = false;
                     }
                 });
             }
-
-            function sendUser() {
+            
+            // This function is called when the submit button is pressed.
+            function handleLoginButton() {
                 var button = document.getElementById('login');
                 if (button.disabled)
                     return false;
+                // Disable the login button and clear the error message.
                 button.disabled = true;
                 document.getElementById('error').innerHTML = "";
-                let name = document.getElementById('username').value;        
-                setUser(name);
+                let name = document.getElementById('username').value;
+                // Try to login.    
+                doLogin(name);
                 return false;
             }
         </script>

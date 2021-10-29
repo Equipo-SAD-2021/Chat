@@ -1,3 +1,4 @@
+<!--HTML file containing the chat page.-->
 <!doctype html>
 <html>
     <head>
@@ -23,10 +24,18 @@
         <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
         <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
         <script>
+            /**
+             * Updates the scroll, so that the bottom messages are always visible.
+            */
             function updateScroll() {
                 $('html, body').animate({scrollTop: $("#messages li").last().offset().top }, 10);
             }
 
+            /**
+             * Appends a message to the chat, using the message content and author.
+             * Private messages are also appended here.
+             * The isLocal flag determines if the message was sent from this session.
+            */
             function appendMessage(data, isLocal) {
                 let align = "";
                 let text = "";
@@ -43,26 +52,39 @@
                     $('#messages').append($("<li style='text-align: " + align + "'>").text(text));
                 updateScroll();
             }
-
+            
+            // Trigger focus to the message send bar, so that the user doesn't have to click it.
             $("#m").focus();
-
+            
+            // Get the login UUID from the session storage. This UUID is provided by the backend and is stored in the "login.html" page.
             var loginUUID = window.sessionStorage["loginUUID"];
+
+            // In the case the UUID is not set, return to the login page.
             if (loginUUID == null) {
                 window.location.href = "/";
             } else {
                 var socket = io();
                 var writingState = false;
 
+                // Request the login to the backend.
                 socket.emit("reqLogin", loginUUID, (nickname) => {
+                    // If we got our nickname, the login was successful. (Continue execution)
                     if (nickname !== null) {
-                        /* Send messages */
+
+                        /* Send messages block*/
+                        // This function is called when the submit button is pressed.
                         $('form').submit(function(){
+                            // Remove spaces and do not send if the message is empty.
                             let msg = $('#m').val().trim();
                             if (msg === "")
                                 return false;
+                            // If the message is not a command, emit a "chatMessage" and append it locally.
                             if (!msg.startsWith("/")) {
                                 socket.emit('chatMessage', msg);
                                 appendMessage({user: nickname, content: msg}, true);
+
+                            // Otherwise, emit a "chatCommand" and append locally the command result (which contains the style and content).
+                            // WARNING: The backend must make sure the content is sanitized (doesn't contain any unwanted html).
                             } else {
                                 var command = msg.split(" ");
                                 socket.emit("chatCommand", command, (response) => {
@@ -70,45 +92,65 @@
                                     updateScroll();
                                 });
                             }
+                            // Clean the message bar and trigger the input event.
                             $('#m').val('');
                             $('#m').trigger("input");
                             return false;
                         });
-
+                        
+                        // This function is called when the text in the message bar is changed. 
                         $('#m').on("input", () =>{
+                            // When the bar is empty or the user is writing a command, emit "stopWriting".
                             var text = $('#m').val();
                             if (text === "" || text.startsWith("/")) {
                                 writingState = false;
                                 socket.emit("stopWriting");
+                            // Otherwise, emit "startWriting" (use a state machine so that the event is not emmited on every text change).
                             } else if (writingState == false) {
                                 writingState = true;
                                 socket.emit("startWriting");
                             }
                         });
 
-                        /* Receive messages */
+                        /* Receive messages block*/
+                        // Append a message when a chat message is recieved.
                         socket.on('chatMessage', function(msgData){
                             appendMessage(msgData, false);
                         });
+
+                        // Append a message when a user joins the chat.
                         socket.on('newUser', function(user){
                             $('#messages').append($("<li style='color:blue';>").text('User <' + user + '> joined the chat.'));
                             updateScroll();
                         });
+
+                        // Append a message when a user leaves the chat.
                         socket.on('userDisconnected', function(user){
                             $('#messages').append($("<li style='color:blue';>").text('User <' + user + '> left the chat.'));
                             updateScroll();
                         });
+                        
+                        /** Change the "typing" message. 
+                         * The event "changeWriting" contains a list of user's nicknames that are currently typing
+                         * and it is recieved every time an user changes its typing state.
+                         * Does not include our own user.
+                        */
                         socket.on("changeWriting", function(users) {
                             var msg = "";
+                            // If the array is null, it means no user is typing.
+                            // (We use the non breakable space character because the typing bar would disappear otherwise.)
                             if (users == null) {
                                 msg = "\u00A0"; // &nbsp
                             }
+                            // If the array is not null but is empty, the backend signals there are many users writing,
+                            // but the client shouldn't display them.
                             else if (users.length === 0) {
                                 msg = "Many users are typing...";
+                            // If the array contains the usernames, generate an string containing the names.
                             } else {
                                 let i = 0;
                                 users.forEach((usr) => {
-                                    msg = msg + "<" + usr + ">"
+                                    msg = msg + "<" + usr + ">";
                                     i++;
                                     if (i == users.length - 1) {
                                         msg = msg + " and ";
@@ -122,8 +164,10 @@
                                     msg = msg + " are typing...";
                                 }
                             }
+                            // Display the string generated previously.
                             $("#writing").text(msg);
-                        })
+                        });
+                    // If we didn't get our nickname, the login request didn't work, so we go back to the login page.
                     } else {
                         window.location.href = "/";
                     }
